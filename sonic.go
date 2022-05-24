@@ -62,3 +62,42 @@ func FileLogger() *zap.SugaredLogger {
 	initLoggerWithFile()
 	return zap.S()
 }
+
+func TrackingLogger(transactionId string) *zap.SugaredLogger {
+	encoder := trackingEncoder(transactionId)
+	core := zapcore.NewCore(encoder, zapcore.AddSync(os.Stdout), zap.DebugLevel)
+	logg := zap.New(core, zap.AddCaller()).Sugar()
+	return logg
+}
+
+func trackingEncoder(transactionId string) zapcore.Encoder {
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.TimeEncoder(func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(time.Now().UTC().Format("2006-01-02T15:04:05.999999")) // this is the format of the time added to the log
+		enc.AppendString("[" + transactionId + "] ")
+		//You can add more strings to log by using enc.AppendString("whatever you want")
+	})
+	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	// encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder ----> adds Colors to the log levels
+	return zapcore.NewConsoleEncoder(encoderConfig)
+}
+
+func TracingLogger(transactionId string, correlationId string) *zap.SugaredLogger {
+	encoder := tracingEncoder(transactionId, correlationId)
+	core := zapcore.NewCore(encoder, zapcore.AddSync(os.Stdout), zap.DebugLevel)
+	logg := zap.New(core, zap.AddCaller()).Sugar()
+	return logg
+}
+
+func tracingEncoder(transactionId string, correlationId string) zapcore.Encoder {
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.TimeEncoder(func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(time.Now().UTC().Format("2006-01-02T15:04:05.999999")) // this is the format of the time added to the log
+		enc.AppendString("TransactionId:[" + transactionId + "] ")
+		enc.AppendString("CorrelationId:[" + correlationId + "] ")
+		//You can add more strings to log by using enc.AppendString("whatever you want")
+	})
+	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	// encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder ----> adds Colors to the log levels
+	return zapcore.NewConsoleEncoder(encoderConfig)
+}
